@@ -23,6 +23,9 @@ const int csPin = 18;         // LoRa radio chip select
 const int resetPin = 23;      // LoRa radio reset
 const int irqPin = 26;        // Change for your board; must be a hardware interrupt pin
 
+int rslt;
+int16_t accelGyro[6]={0}; 
+
 String rx_adr, tx_adr, incoming, outgoing, rssi;
 String name = "Wavemeasure";      // Device Name
 
@@ -33,6 +36,20 @@ char buf_bL[4];
 char buf_localAddress[5];
 char buf_rxAdr[5];
 char buf_txAdr[5];
+
+char buf_gyroX[20];
+char buf_gyroY[20];
+char buf_gyroZ[20];
+char buf_acceX[20];
+char buf_acceY[20];
+char buf_acceZ[20];
+
+float gyroX = 0;
+float gyroY = 0;
+float gyroZ = 0;
+float acceX = 0;
+float acceY = 0;
+float acceZ = 0;
 
 ///////////////////////////////////////////////
 ////////// CHANGE for each Receiver ///////////
@@ -52,8 +69,8 @@ byte byte_rssi;
 byte byte_bL;
 
 long lastGetBattery = 0;
-long lastSend = 0;
 long lastDisplayPrint = 0;
+long lastGetSensor = 0;
 
 int defaultBrightnessDisplay = 150;   // value from 1 to 255
 int bL = 0;
@@ -62,6 +79,8 @@ double bV = 0;
 bool batteryAttention = LOW;
 bool batteryAttentionState = LOW;
 bool initBattery = LOW;
+bool initDisplay = LOW;
+bool initSensor = LOW;
 
 DFRobot_BMI160 bmi160;
   
@@ -144,11 +163,43 @@ void onReceive(int packetSize, String *ptr_rx_adr, String *ptr_tx_adr, String *p
 
 void printDisplay() {
 
-  sprintf(buf_tx, "%s", outgoing);
-  sprintf(buf_rx, "%s", incoming);  
-  sprintf(buf_localAddress, "%x", localAddress);         // byte
-  sprintf(buf_rxAdr, "%s", string_destinationAddress);   // x = byte
-  sprintf(buf_txAdr, "%s", tx_adr);
+  //sprintf(buf_tx, "%s", outgoing);
+  //sprintf(buf_rx, "%s", incoming);  
+
+
+  int gyroX_int = (int) gyroX;
+  float gyroX_float = (abs(gyroX) - abs(gyroX_int)) * 100;
+  int gyroX_fra = (int)gyroX_float;
+  sprintf (buf_gyroX, "%d.%d", gyroX_int, gyroX_fra);
+
+  int gyroY_int = (int) gyroY;
+  float gyroY_float = (abs(gyroY) - abs(gyroY_int)) * 100;
+  int gyroY_fra = (int)gyroY_float;
+  sprintf (buf_gyroY, "%d.%d", gyroY_int, gyroY_fra);
+
+  int gyroZ_int = (int) gyroZ;
+  float gyroZ_float = (abs(gyroZ) - abs(gyroZ_int)) * 100;
+  int gyroZ_fra = (int)gyroZ_float;
+  sprintf (buf_gyroZ, "%d.%d", gyroZ_int, gyroZ_fra);
+
+  int acceX_int = (int) acceX;
+  float acceX_float = (abs(acceX) - abs(acceX_int)) * 100;
+  int acceX_fra = (int)acceX_float;
+  sprintf (buf_acceX, "%d.%d", acceX_int, acceX_fra);
+
+  int acceY_int = (int) acceY;
+  float acceY_float = (abs(acceY) - abs(acceY_int)) * 100;
+  int acceY_fra = (int)acceY_float;
+  sprintf (buf_acceY, "%d.%d", acceY_int, acceY_fra);
+
+  int acceZ_int = (int) acceZ;
+  float acceZ_float = (abs(acceZ) - abs(acceZ_int)) * 100;
+  int acceZ_fra = (int)acceZ_float;
+  sprintf (buf_acceZ, "%d.%d", acceZ_int, acceZ_fra); 
+
+  //sprintf(buf_localAddress, "%x", localAddress);         // byte
+  //sprintf(buf_rxAdr, "%s", string_destinationAddress);   // x = byte
+  //sprintf(buf_txAdr, "%s", tx_adr);
 
   if ((millis() - lastGetBattery > 10000) || (initBattery == LOW)) {
     bV = BL.getBatteryVolts();
@@ -171,11 +222,11 @@ void printDisplay() {
   u8g2.drawStr(87,12,"%");
 
   //Address Indicator
-  u8g2.setFont(u8g2_font_6x13_tf);
-  u8g2.setDrawColor(1);
-  u8g2.drawXBM(20, 3, lineWidth, lineHeight, line1);
-  u8g2.setDrawColor(1);
-  u8g2.drawStr(3,12,buf_localAddress);
+  //u8g2.setFont(u8g2_font_6x13_tf);
+  //u8g2.setDrawColor(1);
+  //u8g2.drawXBM(20, 3, lineWidth, lineHeight, line1);
+  //u8g2.setDrawColor(1);
+  //u8g2.drawStr(3,12,buf_localAddress);
 
   u8g2.setFont(u8g2_font_6x13_tf);
   u8g2.setDrawColor(0);
@@ -212,9 +263,26 @@ void printDisplay() {
     } 
   }
 
+  u8g2.setFont(u8g2_font_6x13_tf);
+  u8g2.setDrawColor(1);
+
+  u8g2.drawStr(5,32,"gX: ");
+  u8g2.drawStr(28,32,buf_gyroX);
+  u8g2.drawStr(5,44,"gY: ");
+  u8g2.drawStr(28,44,buf_gyroY);
+  u8g2.drawStr(5,56,"gZ: ");
+  u8g2.drawStr(28,56,buf_gyroZ);
+
+  u8g2.drawStr(75,32,"aX: ");
+  u8g2.drawStr(98,32,buf_acceX);
+  u8g2.drawStr(75,44,"aY: ");
+  u8g2.drawStr(98,44,buf_acceY);
+  u8g2.drawStr(75,56,"aZ: ");
+  u8g2.drawStr(98,56,buf_acceZ);
+
+
   u8g2.sendBuffer();
 
-  lastDisplayPrint = millis();
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -268,51 +336,52 @@ void setup() {
 
   u8g2.sendBuffer();
 
-  printDisplay();
-
 }
 
 //////////////////////////////////////////////////////////////////////
 
 void loop() {
 
-  printDisplay();
-  
-  int i = 0;
-  int rslt;
-  int16_t accelGyro[6]={0}; 
-  
-  //get both accel and gyro data from bmi160
-  //parameter accelGyro is the pointer to store the data
-  rslt = bmi160.getAccelGyroData(accelGyro);
-  if(rslt == 0){
-    for(i=0;i<6;i++){
-      if (i<3){
-        //the first three are gyro data
-        Serial.print(accelGyro[i]*3.14/180.0);Serial.print("\t");
-      }else{
-        //the following three data are accel data
-        Serial.print(accelGyro[i]/16384.0);Serial.print("\t");
-      }
+  if ((millis() - lastGetSensor > 10000) || (initSensor == LOW)) {
+    //get both accel and gyro data from bmi160
+    //parameter accelGyro is the pointer to store the data
+    int rslt = bmi160.getAccelGyroData(accelGyro);
+
+    if(rslt == 0) {
+
+      gyroX = (accelGyro[1] * 3.14 / 180.0);        //Winkelgeschwindigkeit //Neigung
+      gyroY = (accelGyro[2] * 3.14 / 180.0);
+      gyroZ = (accelGyro[3] * 3.14 / 180.0);
+      acceX = (accelGyro[4] / 16384.0);             //Beschleunigungy
+      acceY = (accelGyro[5] / 16384.0);
+      acceZ = (accelGyro[6] / 16384.0);
+
+      Serial.print("gyroX = "); Serial.println(gyroX);
+      Serial.print("gyroY = "); Serial.println(gyroY);
+      Serial.print("gyroZ = "); Serial.println(gyroZ);
+      Serial.print("acceX = "); Serial.println(acceX);
+      Serial.print("acceY = "); Serial.println(acceY);
+      Serial.print("acceZ = "); Serial.println(acceZ);
+
+      Serial.println("");
+
     }
-    Serial.println();
-  }else{
-    Serial.println("err");
+    
+    else {
+      Serial.println("Error!");
+    }
+
+    initSensor = HIGH;
+    lastGetSensor = millis();
+
   }
 
-  delay(2000);
+  if ((millis() - lastDisplayPrint > 10000) || (initDisplay == LOW)) {
+    printDisplay();
 
-  /*
-   * //only read accel data from bmi160
-   * int16_t onlyAccel[3]={0};
-   * bmi160.getAccelData(onlyAccel);
-   */
-
-  /*
-   * ////only read gyro data from bmi160
-   * int16_t onlyGyro[3]={0};
-   * bmi160.getGyroData(onlyGyro);
-   */
+    initDisplay = HIGH;
+    lastDisplayPrint = millis();
+  }
 
 }
 
