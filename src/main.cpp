@@ -9,7 +9,10 @@
 #include <bitmaps.h>
 #include <DFRobot_BMI160.h>
 
-
+#include <ros.h>
+#include <std_msgs/String.h>
+#include <std_msgs/UInt16.h>
+#include <std_msgs/Float32.h>
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -18,6 +21,10 @@
 #ifdef U8X8_HAVE_HW_I2C
 #include <Wire.h>
 #endif
+
+ros::NodeHandle  nodeHandleROBO_EX;
+
+std_msgs::Float32 msgGx;
 
 const int csPin = 18;         // LoRa radio chip select
 const int resetPin = 23;      // LoRa radio reset
@@ -71,6 +78,7 @@ byte byte_bL;
 long lastGetBattery = 0;
 long lastDisplayPrint = 0;
 long lastGetSensor = 0;
+long lastPublished = 0;
 
 int defaultBrightnessDisplay = 150;   // value from 1 to 255
 int bL = 0;
@@ -81,6 +89,7 @@ bool batteryAttentionState = LOW;
 bool initBattery = LOW;
 bool initDisplay = LOW;
 bool initSensor = LOW;
+bool initPublished = LOW;
 
 DFRobot_BMI160 bmi160;
   
@@ -89,7 +98,7 @@ const int8_t i2c_addr = 0x69;
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 22, /* data=*/ 21);   // ESP32 Thing, HW I2C with pin remapping
 
 #define ADC_PIN             35
-#define CONV_FACTOR       1.75      //1.7 is fine for the right voltage
+#define CONV_FACTOR        1.8      //1.7 is fine for the right voltage
 #define READS               20
 #define batteryWidth        29
 #define batteryHeight       15
@@ -287,12 +296,19 @@ void printDisplay() {
 
 //////////////////////////////////////////////////////////////////////
 
+ros::Publisher pub_gx("gx", &msgGx);
+
+//////////////////////////////////////////////////////////////////////
+
 void setup() {
 
-  setCpuFrequencyMhz(80);               // Set CPU Frequenz 240, 160, 80, 40, 20, 10 Mhz
+  //setCpuFrequencyMhz(80);               // Set CPU Frequenz 240, 160, 80, 40, 20, 10 Mhz
   
   Serial.begin(115200);                 // initialize serial
   while (!Serial);
+
+  nodeHandleROBO_EX.initNode();
+  nodeHandleROBO_EX.advertise(pub_gx);
 
   //init the hardware bmin160  
   if (bmi160.softReset() != BMI160_OK){
@@ -342,7 +358,7 @@ void setup() {
 
 void loop() {
 
-  if ((millis() - lastGetSensor > 10000) || (initSensor == LOW)) {
+  if ((millis() - lastGetSensor > 500) || (initSensor == LOW)) {
     //get both accel and gyro data from bmi160
     //parameter accelGyro is the pointer to store the data
     int rslt = bmi160.getAccelGyroData(accelGyro);
@@ -363,6 +379,8 @@ void loop() {
       Serial.print("acceY = "); Serial.println(acceY);
       Serial.print("acceZ = "); Serial.println(acceZ);
 
+      msgGx.data = gyroX;
+
       Serial.println("");
 
     }
@@ -376,12 +394,21 @@ void loop() {
 
   }
 
-  if ((millis() - lastDisplayPrint > 10000) || (initDisplay == LOW)) {
+  if ((millis() - lastDisplayPrint > 500) || (initDisplay == LOW)) {
     printDisplay();
 
     initDisplay = HIGH;
     lastDisplayPrint = millis();
   }
+
+  if ((millis() - lastPublished > 500) || (initPublished== LOW)) {
+    pub_gx.publish(&msgGx);
+
+    initPublished = HIGH;
+    lastPublished = millis();
+  }
+
+  nodeHandleROBO_EX.spinOnce();
 
 }
 
