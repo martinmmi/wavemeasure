@@ -9,7 +9,6 @@
 #include <bitmaps.h>
 #include <DFRobot_BMI160.h>
 
-
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
 #endif
@@ -50,6 +49,13 @@ float acceX = 0;
 float acceY = 0;
 float acceZ = 0;
 
+float gyroXinit = 0;
+float gyroYinit = 0;
+float gyroZinit = 0;
+float acceXinit = 0;
+float acceYinit = 0;
+float acceZinit = 0;
+
 ///////////////////////////////////////////////
 ////////// CHANGE for each Receiver ///////////
 
@@ -70,6 +76,7 @@ byte byte_bL;
 long lastGetBattery = 0;
 long lastDisplayPrint = 0;
 long lastGetSensor = 0;
+long lastSend = 0;
 
 int defaultBrightnessDisplay = 150;   // value from 1 to 255
 int bL = 0;
@@ -81,6 +88,7 @@ bool initBattery = LOW;
 bool initDisplay = LOW;
 bool initSensor = LOW;
 bool initPublished = LOW;
+bool initSend = LOW;
 
 DFRobot_BMI160 bmi160;
   
@@ -342,7 +350,7 @@ void setup() {
 
 void loop() {
 
-  if ((millis() - lastGetSensor > 500) || (initSensor == LOW)) {
+  if ((millis() - lastGetSensor > 5000) || (initSensor == LOW)) {
     //get both accel and gyro data from bmi160
     //parameter accelGyro is the pointer to store the data
     int rslt = bmi160.getAccelGyroData(accelGyro);
@@ -352,9 +360,9 @@ void loop() {
       gyroX = (accelGyro[1] * 3.14 / 180.0);        //Winkelgeschwindigkeit //Neigung
       gyroY = (accelGyro[2] * 3.14 / 180.0);
       gyroZ = (accelGyro[3] * 3.14 / 180.0);
-      acceX = (accelGyro[4] / 16384.0);             //Beschleunigungy
+      acceX = (accelGyro[4] / 16384.0);             //Beschleunigung
       acceY = (accelGyro[5] / 16384.0);
-      acceZ = (accelGyro[6] / 16384.0);
+      acceZ = (accelGyro[6] / 16384.0);      
 
       Serial.print("gyroX = "); Serial.println(gyroX);
       Serial.print("gyroY = "); Serial.println(gyroY);
@@ -365,6 +373,23 @@ void loop() {
 
       Serial.println("");
 
+      if (initSensor == LOW) {
+        gyroXinit = gyroX;
+        gyroYinit = gyroY;
+        gyroZinit = gyroZ;
+        acceXinit = acceX;
+        acceYinit = acceY;
+        acceZinit = acceZ;
+      }
+
+      Serial.print("gyroX init = "); Serial.println(gyroXinit);
+      Serial.print("gyroY init = "); Serial.println(gyroYinit);
+      Serial.print("gyroZ init = "); Serial.println(gyroZinit);
+      Serial.print("acceX init = "); Serial.println(acceXinit);
+      Serial.print("acceY init = "); Serial.println(acceYinit);
+      Serial.print("acceZ init = "); Serial.println(acceZinit);
+      
+      Serial.println("");
     }
     
     else {
@@ -373,16 +398,20 @@ void loop() {
 
     initSensor = HIGH;
     lastGetSensor = millis();
-
   }
 
-  if ((millis() - lastDisplayPrint > 500) || (initDisplay == LOW)) {
+  if ((millis() - lastDisplayPrint > 5000) || (initDisplay == LOW)) {
     printDisplay();
 
     initDisplay = HIGH;
     lastDisplayPrint = millis();
   }
 
+  if ((millis() - lastSend > 5000) || (initDisplay == LOW)) {
+    sendMessage(buf_gyroX);
+    initSend = HIGH;
+    lastSend = millis();
+  }
 }
 
 //////////////////////////////////////////////////////////////////////
