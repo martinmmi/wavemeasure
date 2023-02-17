@@ -342,7 +342,7 @@ void setup() {
 
 void loop() {
 
-  if ((millis() - lastGetSensor > 10000) || (initSensor == LOW)) {
+  if ((millis() - lastGetSensor > 250) || (initSensor == LOW)) {
     //get both accel and gyro data from bmi160
     //parameter accelGyro is the pointer to store the data
     int rslt = bmi160.getAccelGyroData(accelGyro);
@@ -376,7 +376,7 @@ void loop() {
 
   }
 
-  if ((millis() - lastDisplayPrint > 10000) || (initDisplay == LOW)) {
+  if ((millis() - lastDisplayPrint > 250) || (initDisplay == LOW)) {
     printDisplay();
 
     initDisplay = HIGH;
