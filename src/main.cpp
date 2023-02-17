@@ -10,7 +10,6 @@
 #include <DFRobot_BMI160.h>
 
 
-
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
 #endif
@@ -81,6 +80,7 @@ bool batteryAttentionState = LOW;
 bool initBattery = LOW;
 bool initDisplay = LOW;
 bool initSensor = LOW;
+bool initPublished = LOW;
 
 DFRobot_BMI160 bmi160;
   
@@ -89,7 +89,7 @@ const int8_t i2c_addr = 0x69;
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 22, /* data=*/ 21);   // ESP32 Thing, HW I2C with pin remapping
 
 #define ADC_PIN             35
-#define CONV_FACTOR       1.75      //1.7 is fine for the right voltage
+#define CONV_FACTOR        1.8      //1.7 is fine for the right voltage
 #define READS               20
 #define batteryWidth        29
 #define batteryHeight       15
@@ -342,7 +342,7 @@ void setup() {
 
 void loop() {
 
-  if ((millis() - lastGetSensor > 250) || (initSensor == LOW)) {
+  if ((millis() - lastGetSensor > 500) || (initSensor == LOW)) {
     //get both accel and gyro data from bmi160
     //parameter accelGyro is the pointer to store the data
     int rslt = bmi160.getAccelGyroData(accelGyro);
@@ -376,7 +376,7 @@ void loop() {
 
   }
 
-  if ((millis() - lastDisplayPrint > 250) || (initDisplay == LOW)) {
+  if ((millis() - lastDisplayPrint > 500) || (initDisplay == LOW)) {
     printDisplay();
 
     initDisplay = HIGH;
